@@ -4,51 +4,6 @@ import tailwindcss from '@tailwindcss/vite'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import siteConfiguration from './.figma/make/site.json'
-
-
-// Vite config — https://vitejs.dev/config/
-export default defineConfig(({ mode }) => {
-  // .figma/make/deploy-preview passes `--mode development` for cached-preview builds.
-  const emitSourcemaps = mode === 'development'
-
-  return {
-    base: process.env.FIGMA_PUBLIC_URL ? `${process.env.FIGMA_PUBLIC_URL}/` : '/',
-    build: {
-      sourcemap: emitSourcemaps ? 'inline' : false,
-      minify: !emitSourcemaps,
-    },
-    plugins: [
-react(),
-      tailwindcss(),
-      figmaSiteConfiguration(siteConfiguration),
-      figmaErrorOverlayReplay(),
-      figmaReactRefreshBoundaryFallback(),
-      figmaMakeKitPlugin({ storiesGlob: '/src/**/*.stories.{ts,tsx,js,jsx}' }),
-      figmaLinkedPackageSourcemaps(),
-    ],
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './src'),
-      },
-    },
-    server: {
-      host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
-      port: parseInt(process.env.PORT || '8443'),
-      strictPort: true,
-      watch: {
-        ignored: [
-          '**/.figma/**',
-],
-      },
-    },
-    preview: {
-      host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
-      port: parseInt(process.env.PORT || '8443'),
-    },
-  }
-})
-
 type FigmaSiteConfiguration = {
   title?: string
   description?: string
@@ -75,6 +30,59 @@ type FigmaSiteConfiguration = {
     addBypassLinks?: boolean
   }
 }
+
+// Safely load site.json if it exists (handles production builds where .figma is ignored)
+let siteConfiguration: FigmaSiteConfiguration = {}
+try {
+  const siteJsonPath = path.resolve(__dirname, './.figma/make/site.json')
+  if (fs.existsSync(siteJsonPath)) {
+    siteConfiguration = JSON.parse(fs.readFileSync(siteJsonPath, 'utf8'))
+  }
+} catch {
+  // Fallback to empty config if missing
+}
+
+// Vite config — https://vitejs.dev/config/
+export default defineConfig(({ mode }) => {
+  // .figma/make/deploy-preview passes `--mode development` for cached-preview builds.
+  const emitSourcemaps = mode === 'development'
+
+  return {
+    base: process.env.FIGMA_PUBLIC_URL ? `${process.env.FIGMA_PUBLIC_URL}/` : '/',
+    build: {
+      sourcemap: emitSourcemaps ? 'inline' : false,
+      minify: !emitSourcemaps,
+    },
+    plugins: [
+      react(),
+      tailwindcss(),
+      figmaSiteConfiguration(siteConfiguration),
+      figmaErrorOverlayReplay(),
+      figmaReactRefreshBoundaryFallback(),
+      figmaMakeKitPlugin({ storiesGlob: '/src/**/*.stories.{ts,tsx,js,jsx}' }),
+      figmaLinkedPackageSourcemaps(),
+    ],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
+    server: {
+      host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
+      port: parseInt(process.env.PORT || '8443'),
+      strictPort: true,
+      watch: {
+        ignored: [
+          '**/.figma/**',
+        ],
+      },
+    },
+    preview: {
+      host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
+      port: parseInt(process.env.PORT || '8443'),
+    },
+  }
+})
 
 /** Applies /.figma/make/site.json to the generated document shell. */
 function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
@@ -268,7 +276,7 @@ function figmaErrorOverlayReplay(): Plugin {
  * defining one. This happens when an agent moves a component into a new file
  * and replaces the old module with a re-export:
  *
- *   export { default } from './app/App'
+ *    export { default } from './app/App'
  *
  * Vite otherwise accepts the update using the previous module's HMR boundary,
  * but the re-export-only transform no longer registers a replacement for the
@@ -381,7 +389,7 @@ function figmaMakeKitPlugin(options: { storiesGlob: string | string[] }): Plugin
 
         try {
           res.setHeader('Content-Type', 'text/html')
-          res.end(await server.transformIndexHtml(url, HTML_BOOTSTRAP))
+          res.end(await server.transformIndexHtml(url, HTML_BOOTSTRApp))
         } catch (err) {
           next(err as Error)
         }
